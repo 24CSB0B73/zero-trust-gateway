@@ -1,0 +1,64 @@
+name: zero-trust-gateway
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: zt
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: ztgw
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zt -d ztgw"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks: [backend]            # not published to the host
+
+  demo:                            # the protected "internal application"
+    build: .
+    command: ["/app/demo_service"]
+    environment:
+      PORT: "9000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [backend]            # NO published port: reachable only through the gateway
+
+  gateway:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+      demo:
+        condition: service_started
+    ports:
+      - "8080:8080"                # the ONLY entry point
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgresql://zt:${DB_PASSWORD}@db:5432/ztgw
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (>= 32 chars)}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      DEMO_UPSTREAM: http://demo:9000
+      RATE_RPS: ${RATE_RPS:-50}
+      RATE_BURST: ${RATE_BURST:-100}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [backend, frontend]
+
+networks:
+  backend:
+    internal: true                 # no route to the outside world; db and demo live here
+  frontend: {}
+
+volumes:
+  pgdata:

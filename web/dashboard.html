@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zero Trust Gateway — Security Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header><h1>Zero Trust Gateway</h1><span id="status">signed out</span></header>
+
+  <section id="login">
+    <h2>Admin sign-in</h2>
+    <input id="email" type="email" placeholder="admin email" autocomplete="username">
+    <input id="password" type="password" placeholder="password" autocomplete="current-password">
+    <button id="loginBtn">Sign in</button>
+    <p id="loginErr" class="err"></p>
+    <p class="hint">The token is kept in memory only (not localStorage) and is gone when you close the tab.</p>
+  </section>
+
+  <main id="app" hidden>
+    <div class="cards">
+      <div class="card allow"><span id="cAllow">0</span><label>Access allowed</label></div>
+      <div class="card deny"><span id="cDeny">0</span><label>Access denied</label></div>
+      <div class="card"><span id="cLogin">0</span><label>Failed logins</label></div>
+      <div class="card"><span id="cRate">0</span><label>Rate limited</label></div>
+      <div class="card"><span id="cCache">–</span><label>Policy cache hit rate</label></div>
+      <div class="card"><span id="cLat">–</span><label>Avg request (ms)</label></div>
+    </div>
+
+    <h2>Why requests were denied</h2>
+    <div id="reasons"></div>
+
+    <h2>Latest events <small>(auto-refresh 5s)</small></h2>
+    <div class="filters">
+      <select id="fDecision"><option value="">all decisions</option><option>deny</option><option>allow</option><option>error</option></select>
+      <button id="refresh">Refresh now</button>
+    </div>
+    <table>
+      <thead><tr><th>Time</th><th>User</th><th>Resource</th><th>Action</th><th>Decision</th><th>Reason</th><th>IP</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </main>
+  <script src="dashboard.js"></script>
+</body>
+</html>
